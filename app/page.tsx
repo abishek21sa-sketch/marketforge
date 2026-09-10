@@ -25,7 +25,7 @@ export default function Home() {
     const scale = Math.min(quantity / 25000, 3);
     const slippage = (4.7 + scale * (mode === 'TWAP' ? 1.8 : 1.35) + (horizon < 10 ? 1.9 : 0)).toFixed(1);
     return { slippage, fill: Math.min(99.2, 96.4 + horizon / 12 - scale * .35).toFixed(1), cost: (Number(slippage) * quantity * .01).toFixed(0) };
-  }, [horizon, mode, quantity, run]);
+  }, [horizon, mode, quantity]);
 
   return <main className="app-shell">
     <aside className="sidebar"><div className="brand-mark">MF</div><nav className="side-nav" aria-label="Primary navigation">
@@ -46,3 +46,4 @@ export default function Home() {
     </section>
   </main>;
 }
+
