@@ -1,0 +1,5 @@
+import type { Instrument, OrderBookSnapshot, Quote, Trade } from './domain';
+export const fixtureInstrument: Instrument = { symbol: 'NVDA', name: 'NVIDIA Corporation', venue: 'XNAS', assetClass: 'us-equity' };
+export const fixtureQuotes: Quote[] = [{ ts: '2024-06-06T09:36:00.000Z', bid: 182.2, bidSize: 650, ask: 182.22, askSize: 400, venue: 'XNAS' }, { ts: '2024-06-06T09:39:00.000Z', bid: 182.31, bidSize: 520, ask: 182.33, askSize: 840, venue: 'XNAS' }, { ts: '2024-06-06T09:42:00.841Z', bid: 182.41, bidSize: 650, ask: 182.43, askSize: 530, venue: 'XNAS' }];
+export const fixtureTrades: Trade[] = [{ ts: '2024-06-06T09:41:00.000Z', price: 182.41, size: 420, side: 'buy', venue: 'XNAS' }, { ts: '2024-06-06T09:41:03.000Z', price: 182.4, size: 185, side: 'sell', venue: 'BATS' }, { ts: '2024-06-06T09:41:07.000Z', price: 182.42, size: 760, side: 'buy', venue: 'XNAS' }];
+export const fixtureBook: OrderBookSnapshot = { ts: '2024-06-06T09:42:00.841Z', asks: [{ price: 182.43, size: 460 }, { price: 182.44, size: 712 }, { price: 182.45, size: 286 }], bids: [{ price: 182.41, size: 650 }, { price: 182.4, size: 480 }, { price: 182.39, size: 920 }] };

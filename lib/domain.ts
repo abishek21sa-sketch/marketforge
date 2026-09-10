@@ -1,0 +1,11 @@
+export type Side = 'buy' | 'sell';
+export type Venue = 'XNAS' | 'BATS' | 'EDGX' | 'ARCX';
+export type Instrument = { symbol: string; name: string; venue: Venue; assetClass: 'us-equity' };
+export type Quote = { ts: string; bid: number; bidSize: number; ask: number; askSize: number; venue: Venue };
+export type Trade = { ts: string; price: number; size: number; side: Side; venue: Venue };
+export type OrderBookSnapshot = { ts: string; bids: Array<{ price: number; size: number }>; asks: Array<{ price: number; size: number }> };
+export type ParentOrder = { id: string; instrument: Instrument; side: Side; quantity: number; horizonMinutes: number; strategy: 'TWAP' | 'VWAP' };
+export type ChildOrder = { id: string; parentId: string; ts: string; quantity: number; limitPrice?: number; status: 'queued' | 'working' | 'filled' | 'cancelled' };
+export type Fill = { childOrderId: string; ts: string; price: number; quantity: number; venue: Venue };
+export type Benchmark = 'arrival-price' | 'vwap' | 'twap' | 'close';
+export type ExecutionReport = { parentOrderId: string; filledQuantity: number; averagePrice: number; slippageBps: number; implementationShortfall: number; benchmark: Benchmark };
