@@ -27,3 +27,5 @@
 .simulation-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
 .simulation-meta .simulation-status{margin-top:0}
 .summary-button{display:flex;align-items:center;gap:6px;padding:4px 0}
+.print-select{border:0;background:transparent;color:inherit;padding:0;font:inherit;text-align:left}
+.print-select:hover,.print-select:focus-visible{color:var(--teal);text-decoration:underline;outline:none}
