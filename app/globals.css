@@ -20,3 +20,7 @@
 .simulation-status{display:flex;align-items:center;gap:7px;margin-top:9px;color:var(--muted);font:10px var(--font-mono)}
 .simulation-status i{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px rgba(99,230,195,.7)}
 .ledger-actions{display:flex;align-items:center;gap:10px}
+.top-actions{position:relative}
+.help-popover{position:absolute;top:34px;right:0;z-index:10;width:272px;padding:14px;border:1px solid rgba(99,230,195,.24);border-radius:8px;background:rgba(13,26,29,.98);box-shadow:0 14px 28px rgba(0,0,0,.28);color:var(--muted);font:12px/1.45 var(--font-mono)}
+.help-popover strong{display:block;color:var(--ink);font-size:12px;font-weight:600}
+.help-popover p{margin-top:8px}
