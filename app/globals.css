@@ -24,3 +24,6 @@
 .help-popover{position:absolute;top:34px;right:0;z-index:10;width:272px;padding:14px;border:1px solid rgba(99,230,195,.24);border-radius:8px;background:rgba(13,26,29,.98);box-shadow:0 14px 28px rgba(0,0,0,.28);color:var(--muted);font:12px/1.45 var(--font-mono)}
 .help-popover strong{display:block;color:var(--ink);font-size:12px;font-weight:600}
 .help-popover p{margin-top:8px}
+.simulation-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.simulation-meta .simulation-status{margin-top:0}
+.summary-button{display:flex;align-items:center;gap:6px;padding:4px 0}
