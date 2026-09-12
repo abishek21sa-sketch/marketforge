@@ -19,6 +19,7 @@ function Metric({ label, value, note, tone = '' }: { label: string; value: strin
 
 export default function Home() {
   const [window, setWindow] = useState<'1m'|'5m'|'30m'>('5m');
+  const [activeNav, setActiveNav] = useState('execution-lab');
   const [mode, setMode] = useState<'TWAP'|'VWAP'|'POV'>('TWAP');
   const [side, setSide] = useState<'Buy'|'Sell'>('Buy');
   const [benchmark, setBenchmark] = useState<'Arrival'|'VWAP'|'Close'>('Arrival');
@@ -94,11 +95,14 @@ export default function Home() {
     globalThis.addEventListener('keydown', handleShortcut);
     return () => globalThis.removeEventListener('keydown', handleShortcut);
   }, [benchmark, mode, result.fill, result.slippage, run, side]);
-  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const jumpTo = (id: string) => {
+    setActiveNav(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return <main className="app-shell">
     <aside className="sidebar"><div className="brand-mark">MF</div><nav className="side-nav" aria-label="Primary navigation">
-      <button className="nav-item active" aria-label="Execution lab" onClick={() => jumpTo('execution-lab')}><LineChart size={18}/><span>Lab</span></button><button className="nav-item" aria-label="Order book" onClick={() => jumpTo('book')}><Layers3 size={18}/><span>Book</span></button><button className="nav-item" aria-label="Market replay" onClick={() => jumpTo('replay')}><Radio size={18}/><span>Replay</span></button><button className="nav-item" aria-label="Reports" onClick={() => jumpTo('reports')}><BarChart3 size={18}/><span>Reports</span></button>
-    </nav><div className="sidebar-bottom"><button className="nav-item" aria-label="Settings" onClick={() => jumpTo('setup')}><Settings2 size={18}/><span>Setup</span></button><div className="avatar">AB</div></div></aside>
+      <button className={'nav-item '+(activeNav==='execution-lab'?'active':'')} aria-label="Execution lab" onClick={() => jumpTo('execution-lab')}><LineChart size={18}/><span>Lab</span></button><button className={'nav-item '+(activeNav==='book'?'active':'')} aria-label="Order book" onClick={() => jumpTo('book')}><Layers3 size={18}/><span>Book</span></button><button className={'nav-item '+(activeNav==='replay'?'active':'')} aria-label="Market replay" onClick={() => jumpTo('replay')}><Radio size={18}/><span>Replay</span></button><button className={'nav-item '+(activeNav==='reports'?'active':'')} aria-label="Reports" onClick={() => jumpTo('reports')}><BarChart3 size={18}/><span>Reports</span></button>
+    </nav><div className="sidebar-bottom"><button className={'nav-item '+(activeNav==='setup'?'active':'')} aria-label="Settings" onClick={() => jumpTo('setup')}><Settings2 size={18}/><span>Setup</span></button><div className="avatar">AB</div></div></aside>
     <section className="workspace"><header className="topbar"><div className="breadcrumb"><span>MarketForge</span><b>/</b><strong>Execution lab</strong></div><div className="top-actions"><div className="status-dot"><i/> Replay data synced</div><button className="icon-button" aria-label="Help"><CircleHelp size={17}/></button><button className="icon-button" aria-label="Settings"><SlidersHorizontal size={17}/></button></div></header>
       <div className="content">
         <div className="page-heading"><div><div className="kicker"><Sparkles size={13}/> PAPER EXECUTION / PHASE 1</div><h1>Read the tape. <em>Route with intent.</em></h1><p>Reconstruct the market, pressure-test a schedule, and see the cost of every decision.</p></div><div className="session-chip"><i/> SIMULATION ONLY <ChevronDown size={14}/></div></div>
@@ -118,6 +122,7 @@ export default function Home() {
     </section>
   </main>;
 }
+
 
 
 
