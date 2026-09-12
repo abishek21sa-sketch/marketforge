@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: marketforge-execution-lab
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build:render
+    startCommand: npm run start:render
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0
+      - key: NITRO_PRESET
+        value: node

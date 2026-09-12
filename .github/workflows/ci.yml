@@ -1,0 +1,26 @@
+name: MarketForge CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint app surface
+        run: npm run lint:app
+      - name: Build Sites target
+        run: npm run build
+      - name: Build Nitro target
+        run: NITRO_PRESET=node npm run build:render

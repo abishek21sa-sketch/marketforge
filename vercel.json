@@ -1,0 +1,5 @@
+{
+  "framework": null,
+  "buildCommand": "NITRO_PRESET=vercel npm run build:vercel",
+  "installCommand": "npm ci"
+}
