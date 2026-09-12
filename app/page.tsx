@@ -17,6 +17,8 @@ function Metric({ label, value, note, tone = '' }: { label: string; value: strin
   return <div className="metric-card"><div className="eyebrow">{label}</div><div className={'metric-value ' + tone}>{value}</div><div className="metric-note">{note}</div></div>;
 }
 
+type LedgerItem = { id: number; strategy: string; side: string; benchmark: string; slippage: string; fill: string };
+const SESSION_KEY = 'marketforge-execution-session-v1';
 export default function Home() {
   const [window, setWindow] = useState<'1m'|'5m'|'30m'>('5m');
   const [activeNav, setActiveNav] = useState('execution-lab');
@@ -30,7 +32,8 @@ export default function Home() {
   const [maxSpread, setMaxSpread] = useState(3);
   const [run, setRun] = useState(1);
   const [lastRunNotice, setLastRunNotice] = useState('Ready to simulate');
-  const [history, setHistory] = useState<Array<{ id: number; strategy: string; side: string; benchmark: string; slippage: string; fill: string }>>([]);
+  const [history, setHistory] = useState<LedgerItem[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [calibrated, setCalibrated] = useState(false);
   const [calibrationCycle, setCalibrationCycle] = useState(0);
   const [replayIndex, setReplayIndex] = useState(5);
@@ -98,6 +101,33 @@ export default function Home() {
     globalThis.addEventListener('keydown', handleShortcut);
     return () => globalThis.removeEventListener('keydown', handleShortcut);
   }, [benchmark, mode, result.fill, result.slippage, run, side]);
+  useEffect(() => {
+    const restoreId = globalThis.setTimeout(() => {
+      try {
+        const raw = globalThis.localStorage.getItem(SESSION_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; replayIndex?: unknown };
+          if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
+          if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
+          if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
+          if (typeof saved.replayIndex === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replayIndex)));
+          if (Array.isArray(saved.history) && saved.history.length > 0) setLastRunNotice('Local experiment restored');
+        }
+      } catch {
+        setLastRunNotice('Local session restore unavailable');
+      }
+      setStorageReady(true);
+    }, 0);
+    return () => globalThis.clearTimeout(restoreId);
+  }, []);
+  useEffect(() => {
+    if (!storageReady) return;
+    try {
+      globalThis.localStorage.setItem(SESSION_KEY, JSON.stringify({ run, history, calibrated, replayIndex }));
+    } catch {
+      // Storage can be unavailable in private or restricted browser contexts.
+    }
+  }, [calibrated, history, replayIndex, run, storageReady]);
   const clearLedger = () => {
     setHistory([]);
     setLastRunNotice('Ledger cleared · ready to simulate');
