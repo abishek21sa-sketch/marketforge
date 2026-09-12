@@ -32,3 +32,4 @@
 .legend-event{width:8px;height:8px;display:inline-block;border:1px solid var(--teal);border-radius:50%;background:var(--bg)}
 .ledger-actions .text-button{display:flex;align-items:center;gap:6px}
 .run-button.active-auto{background:rgba(99,230,195,.1)}
+.replay-scrubber{display:grid;grid-template-columns:auto minmax(120px,1fr) auto;align-items:center;gap:10px;margin-top:13px;padding:9px 12px;border:1px solid rgba(99,230,195,.13);border-radius:7px;background:rgba(99,230,195,.025)}.replay-scrubber span,.replay-scrubber output{color:var(--muted);font:10px var(--font-mono)}.replay-scrubber output{color:var(--teal)}.replay-scrubber input{width:100%;accent-color:var(--teal);cursor:pointer}
