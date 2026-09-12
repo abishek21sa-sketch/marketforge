@@ -133,6 +133,24 @@ export default function Home() {
     setHistory([]);
     setLastRunNotice('Ledger cleared · ready to simulate');
   };
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const sectionIds = ['execution-lab', 'book', 'replay', 'reports', 'setup'];
+    const visibleSections = new Map<string, number>();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) visibleSections.set(entry.target.id, entry.intersectionRatio);
+        else visibleSections.delete(entry.target.id);
+      });
+      const nextSection = [...visibleSections.entries()].sort(([, left], [, right]) => right - left)[0]?.[0];
+      if (nextSection) setActiveNav(nextSection);
+    }, { rootMargin: '-88px 0px -48% 0px', threshold: [0.15, 0.4, 0.7] });
+    sectionIds.forEach((id) => {
+      const section = document.getElementById(id);
+      if (section) observer.observe(section);
+    });
+    return () => observer.disconnect();
+  }, []);
   const jumpTo = (id: string) => {
     setActiveNav(id);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
