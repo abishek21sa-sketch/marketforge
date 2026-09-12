@@ -19,3 +19,4 @@
 #execution-lab,#book,#replay,#reports,#setup{scroll-margin-top:88px}
 .simulation-status{display:flex;align-items:center;gap:7px;margin-top:9px;color:var(--muted);font:10px var(--font-mono)}
 .simulation-status i{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px rgba(99,230,195,.7)}
+.ledger-actions{display:flex;align-items:center;gap:10px}
