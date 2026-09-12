@@ -93,11 +93,15 @@ export default function Home() {
   const selectPrint = (time: string, price: string) => {
     const nextIndex = prints.findIndex(([printTime, , printPrice]) => printTime === time && printPrice === price);
     if (nextIndex >= 0) {
+      setIsAutoReplay(false);
       setReplayIndex(nextIndex);
       setActiveNav('replay');
     }
   };
-  const advanceReplay = () => setReplayIndex((index) => (index + 1) % prints.length);
+  const advanceReplay = () => {
+    setIsAutoReplay(false);
+    setReplayIndex((index) => (index + 1) % prints.length);
+  };
   const toggleAutoReplay = () => setIsAutoReplay((value) => !value);
   const refreshCalibration = () => {
     setCalibrated(true);
