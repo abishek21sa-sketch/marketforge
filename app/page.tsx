@@ -121,11 +121,21 @@ export default function Home() {
       try {
         const raw = globalThis.localStorage.getItem(SESSION_KEY);
         if (raw) {
-          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; replayIndex?: unknown };
+          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; replayIndex?: unknown; window?: unknown; mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown; printFilter?: unknown };
           if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
           if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
           if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
           if (typeof saved.replayIndex === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replayIndex)));
+          if (saved.window === '1m' || saved.window === '5m' || saved.window === '30m') setWindow(saved.window);
+          if (saved.mode === 'TWAP' || saved.mode === 'VWAP' || saved.mode === 'POV') setMode(saved.mode);
+          if (saved.side === 'Buy' || saved.side === 'Sell') setSide(saved.side);
+          if (saved.benchmark === 'Arrival' || saved.benchmark === 'VWAP' || saved.benchmark === 'Close') setBenchmark(saved.benchmark);
+          if (typeof saved.quantity === 'number') setQuantity(Math.max(100, saved.quantity));
+          if (saved.horizon === 5 || saved.horizon === 15 || saved.horizon === 30) setHorizon(saved.horizon);
+          if (saved.participation === 5 || saved.participation === 10 || saved.participation === 20) setParticipation(saved.participation);
+          if (saved.routePolicy === 'Balanced' || saved.routePolicy === 'Queue-aware' || saved.routePolicy === 'Latency-aware') setRoutePolicy(saved.routePolicy);
+          if (saved.maxSpread === 2 || saved.maxSpread === 3 || saved.maxSpread === 5) setMaxSpread(saved.maxSpread);
+          if (saved.printFilter === 'All' || saved.printFilter === 'Buys' || saved.printFilter === 'Sells') setPrintFilter(saved.printFilter);
           if (Array.isArray(saved.history) && saved.history.length > 0) setLastRunNotice('Local experiment restored');
         }
       } catch {
@@ -138,11 +148,11 @@ export default function Home() {
   useEffect(() => {
     if (!storageReady) return;
     try {
-      globalThis.localStorage.setItem(SESSION_KEY, JSON.stringify({ run, history, calibrated, replayIndex }));
+      globalThis.localStorage.setItem(SESSION_KEY, JSON.stringify({ run, history, calibrated, replayIndex, window, mode, side, benchmark, quantity, horizon, participation, routePolicy, maxSpread, printFilter }));
     } catch {
       // Storage can be unavailable in private or restricted browser contexts.
     }
-  }, [calibrated, history, replayIndex, run, storageReady]);
+  }, [benchmark, calibrated, history, horizon, maxSpread, mode, participation, printFilter, quantity, replayIndex, routePolicy, run, side, storageReady, window]);
   const copySummary = async () => {
     const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
     try {
