@@ -309,8 +309,9 @@ export default function Home() {
       if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
       if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
       if (typeof saved.calibrationCycle === 'number') setCalibrationCycle(Math.max(0, saved.calibrationCycle));
-      if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
-      if (typeof saved.loadedRunId === 'number') setLoadedRunId(saved.loadedRunId);
+      const importedHistory = Array.isArray(saved.history) ? saved.history.slice(0, 3) as LedgerItem[] : [];
+      setHistory(importedHistory);
+      setLoadedRunId(typeof saved.loadedRunId === 'number' && importedHistory.some((item) => item.id === saved.loadedRunId) ? saved.loadedRunId : null);
       setIsAutoReplay(false);
       setActiveNav('execution-lab');
       document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
