@@ -188,8 +188,9 @@ export default function Home() {
       try {
         const raw = globalThis.localStorage.getItem(SESSION_KEY);
         if (raw) {
-          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; calibrationCycle?: unknown; replayIndex?: unknown; window?: unknown; mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown; printFilter?: unknown };
+          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; calibrationCycle?: unknown; loadedRunId?: unknown; replayIndex?: unknown; window?: unknown; mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown; printFilter?: unknown };
           if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
+          if (typeof saved.loadedRunId === 'number') setLoadedRunId(saved.loadedRunId);
           if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
           if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
           if (typeof saved.replayIndex === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replayIndex)));
@@ -215,11 +216,11 @@ export default function Home() {
   useEffect(() => {
     if (!storageReady) return;
     try {
-      globalThis.localStorage.setItem(SESSION_KEY, JSON.stringify({ run, history, calibrated, replayIndex, window, mode, side, benchmark, quantity, horizon, participation, routePolicy, maxSpread, printFilter }));
+      globalThis.localStorage.setItem(SESSION_KEY, JSON.stringify({ run, history, loadedRunId, calibrated, replayIndex, window, mode, side, benchmark, quantity, horizon, participation, routePolicy, maxSpread, printFilter }));
     } catch {
       // Storage can be unavailable in private or restricted browser contexts.
     }
-  }, [benchmark, calibrated, history, horizon, maxSpread, mode, participation, printFilter, quantity, replayIndex, routePolicy, run, side, storageReady, window]);
+  }, [benchmark, calibrated, history, horizon, loadedRunId, maxSpread, mode, participation, printFilter, quantity, replayIndex, routePolicy, run, side, storageReady, window]);
   const copySummary = async () => {
     const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
     try {
@@ -253,6 +254,7 @@ export default function Home() {
       instrument: 'NVDA',
       exportedAt: new Date().toISOString(),
       run,
+      loadedRunId,
       calibrated,
       calibrationCycle,
       replay: { window, event: activePrint[0], index: replayIndex },
@@ -277,6 +279,7 @@ export default function Home() {
     try {
       const saved = JSON.parse(await file.text()) as {
         run?: unknown;
+        loadedRunId?: unknown;
         calibrated?: unknown;
         calibrationCycle?: unknown;
         replay?: { window?: unknown; index?: unknown };
@@ -299,7 +302,7 @@ export default function Home() {
       if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
       if (typeof saved.calibrationCycle === 'number') setCalibrationCycle(Math.max(0, saved.calibrationCycle));
       if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
-      setLoadedRunId(null);
+      if (typeof saved.loadedRunId === 'number') setLoadedRunId(saved.loadedRunId);
       setIsAutoReplay(false);
       setActiveNav('execution-lab');
       document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
