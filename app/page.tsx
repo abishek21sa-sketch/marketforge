@@ -188,7 +188,7 @@ export default function Home() {
       try {
         const raw = globalThis.localStorage.getItem(SESSION_KEY);
         if (raw) {
-          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; replayIndex?: unknown; window?: unknown; mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown; printFilter?: unknown };
+          const saved = JSON.parse(raw) as { run?: unknown; history?: unknown; calibrated?: unknown; calibrationCycle?: unknown; replayIndex?: unknown; window?: unknown; mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown; printFilter?: unknown };
           if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
           if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
           if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
@@ -253,6 +253,8 @@ export default function Home() {
       instrument: 'NVDA',
       exportedAt: new Date().toISOString(),
       run,
+      calibrated,
+      calibrationCycle,
       replay: { window, event: activePrint[0], index: replayIndex },
       order: { mode, side, benchmark, quantity, horizon, participation, routePolicy, maxSpread },
       result,
@@ -275,6 +277,8 @@ export default function Home() {
     try {
       const saved = JSON.parse(await file.text()) as {
         run?: unknown;
+        calibrated?: unknown;
+        calibrationCycle?: unknown;
         replay?: { window?: unknown; index?: unknown };
         order?: { mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown };
         history?: unknown;
@@ -292,9 +296,13 @@ export default function Home() {
       if (saved.replay?.window === '1m' || saved.replay?.window === '5m' || saved.replay?.window === '30m') setWindow(saved.replay.window);
       if (typeof saved.replay?.index === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replay.index)));
       if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
+      if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
+      if (typeof saved.calibrationCycle === 'number') setCalibrationCycle(Math.max(0, saved.calibrationCycle));
       if (Array.isArray(saved.history)) setHistory(saved.history.slice(0, 3) as LedgerItem[]);
       setLoadedRunId(null);
       setIsAutoReplay(false);
+      setActiveNav('execution-lab');
+      document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setLastRunNotice('Session imported · review before simulating');
     } catch {
       setLastRunNotice('Import failed · choose a MarketForge JSON session');
