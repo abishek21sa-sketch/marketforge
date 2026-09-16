@@ -81,7 +81,8 @@ export default function Home() {
     const baseSlippage = 4.7 + scale * modeFactor + participationAdj + (horizon < 10 ? 1.9 : 0) + sideAdj + microstructureDrag;
     const slippage = Math.max(.8, baseSlippage + benchmarkAdj).toFixed(1);
     const spread = mode === 'TWAP' ? 1.2 : mode === 'VWAP' ? 1.0 : .9;
-    const impact = mode === 'TWAP' ? 2.8 : mode === 'VWAP' ? 2.1 : 1.8;
+    const sizeImpact = Math.max(0, scale - 1) * (mode === 'TWAP' ? .45 : mode === 'VWAP' ? .35 : .25);
+    const impact = (mode === 'TWAP' ? 2.8 : mode === 'VWAP' ? 2.1 : 1.8) + sizeImpact;
     const timing = Math.max(0, Number(slippage) - spread - impact).toFixed(1);
     const sweep = [5000, 25000, 50000, 100000].map((size) => ({ size, value: Math.max(.8, 4.7 + (size / 25000) * modeFactor + participationAdj + (horizon < 10 ? 1.9 : 0) + benchmarkAdj + sideAdj + microstructureDrag).toFixed(1) }));
     const comparison = ['TWAP', 'VWAP', 'POV'].map((strategy) => { const factor = strategy === 'TWAP' ? 1.8 : strategy === 'VWAP' ? 1.35 : 1.05; const povAdj = strategy === 'POV' ? participationAdj : 0; return { strategy, value: Math.max(.8, 4.7 + scale * factor + povAdj + (horizon < 10 ? 1.9 : 0) + benchmarkAdj + sideAdj + microstructureDrag).toFixed(1) }; });
