@@ -76,8 +76,11 @@ export default function Home() {
     const quotedSpread = 2.0;
     const spreadCheck = quotedSpread <= maxSpread;
     const quantityValid = quantity >= 100;
-    const bookCoverage = quantityValid && quantity <= 50000;
-    const checks = [{ label: 'Spread guard', value: spreadCheck ? 'PASS' : 'HOLD', detail: quotedSpread.toFixed(1) + '¢ inside ' + maxSpread.toFixed(1) + '¢ limit', tone: spreadCheck ? 'good' : 'warn' }, { label: 'Book coverage', value: !quantityValid ? 'HOLD' : bookCoverage ? 'COVERED' : 'STRETCHED', detail: !quantityValid ? 'Minimum working clip is 100 shares' : bookCoverage ? 'Top venues cover the working clip' : 'Split the parent order before routing', tone: !quantityValid || !bookCoverage ? 'warn' : 'good' }, { label: 'Route posture', value: routePolicy.toUpperCase(), detail: mode === 'POV' ? participation + '% participation cap' : mode + ' schedule', tone: 'good' }];
+    const visibleDepth = book.reduce((total, [, size]) => total + Number(size), 0);
+    const capacityMultiplier = Math.max(1, horizon / 5) * (mode === 'POV' ? participation / 10 : 1);
+    const modeledCapacity = Math.round(visibleDepth * capacityMultiplier * 2);
+    const bookCoverage = quantityValid && quantity <= modeledCapacity;
+    const checks = [{ label: 'Spread guard', value: spreadCheck ? 'PASS' : 'HOLD', detail: quotedSpread.toFixed(1) + '¢ inside ' + maxSpread.toFixed(1) + '¢ limit', tone: spreadCheck ? 'good' : 'warn' }, { label: 'Book coverage', value: !quantityValid ? 'HOLD' : bookCoverage ? 'COVERED' : 'STRETCHED', detail: !quantityValid ? 'Minimum working clip is 100 shares' : bookCoverage ? modeledCapacity.toLocaleString() + ' modeled shares available across the horizon' : 'Working clip exceeds ' + modeledCapacity.toLocaleString() + ' modeled shares', tone: !quantityValid || !bookCoverage ? 'warn' : 'good' }, { label: 'Route posture', value: routePolicy.toUpperCase(), detail: mode === 'POV' ? participation + '% participation cap' : mode + ' schedule', tone: 'good' }];
     const baseSlippage = 4.7 + scale * modeFactor + participationAdj + (horizon < 10 ? 1.9 : 0) + sideAdj + microstructureDrag;
     const slippage = Math.max(.8, baseSlippage + benchmarkAdj).toFixed(1);
     const spread = mode === 'TWAP' ? 1.2 : mode === 'VWAP' ? 1.0 : .9;
