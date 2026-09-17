@@ -364,13 +364,17 @@ export default function Home() {
     setCalibrationCycle(0);
     setReplayIndex(5);
     setPrintFilter('All');
+    setShowHelp(false);
+    setActiveNav('execution-lab');
     setCopyState('Copy summary');
     setExportState('Export CSV');
+    setJsonExportState('Export JSON');
     try {
       globalThis.localStorage.removeItem(SESSION_KEY);
     } catch {
       // Storage can be unavailable in private or restricted browser contexts.
     }
+    document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setLastRunNotice('Defaults restored · local session cleared');
   };  useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
