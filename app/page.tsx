@@ -18,6 +18,11 @@ function Metric({ label, value, note, tone = '' }: { label: string; value: strin
 }
 
 type LedgerItem = { id: number; strategy: string; side: string; benchmark: string; slippage: string; fill: string; quantity: number; route: string; venue?: string; calibrated?: boolean; posture?: string; microstructureDrag?: string; cost?: string; horizon?: number; participation?: number; maxSpread?: number; createdAt?: string };
+function isLedgerItem(value: unknown): value is LedgerItem {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<LedgerItem>;
+  return typeof item.id === 'number' && Number.isFinite(item.id) && (item.strategy === 'TWAP' || item.strategy === 'VWAP' || item.strategy === 'POV') && (item.side === 'Buy' || item.side === 'Sell') && (item.benchmark === 'Arrival' || item.benchmark === 'VWAP' || item.benchmark === 'Close') && typeof item.slippage === 'string' && typeof item.fill === 'string' && typeof item.quantity === 'number' && Number.isFinite(item.quantity) && typeof item.route === 'string';
+}
 const SESSION_KEY = 'marketforge-execution-session-v1';
 export default function Home() {
   const [window, setWindow] = useState<'1m'|'5m'|'30m'>('5m');
@@ -321,13 +326,15 @@ export default function Home() {
       if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
       if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
       if (typeof saved.calibrationCycle === 'number') setCalibrationCycle(Math.max(0, saved.calibrationCycle));
-      const importedHistory = Array.isArray(saved.history) ? saved.history.slice(0, 3) as LedgerItem[] : [];
+      const rawHistory = Array.isArray(saved.history) ? saved.history : [];
+      const importedHistory = rawHistory.filter(isLedgerItem).slice(0, 3);
+      const skippedHistory = rawHistory.length - importedHistory.length;
       setHistory(importedHistory);
       setLoadedRunId(typeof saved.loadedRunId === 'number' && importedHistory.some((item) => item.id === saved.loadedRunId) ? saved.loadedRunId : null);
       setIsAutoReplay(false);
       setActiveNav('execution-lab');
       document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setLastRunNotice('Session imported · review before simulating');
+      setLastRunNotice(skippedHistory > 0 ? `Session imported · ${skippedHistory} invalid ledger ${skippedHistory === 1 ? 'entry' : 'entries'} skipped` : 'Session imported · review before simulating');
     } catch {
       setLastRunNotice('Import failed · choose a MarketForge JSON session');
     } finally {
