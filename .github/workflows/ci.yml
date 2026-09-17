@@ -20,7 +20,11 @@ jobs:
         run: npm ci
       - name: Lint app surface
         run: npm run lint:app
+      - name: Check patch hygiene
+        run: git diff --check
       - name: Build Sites target
         run: npm run build
+      - name: Build Vercel target
+        run: NITRO_PRESET=vercel npm run build:vercel
       - name: Build Nitro target
         run: NITRO_PRESET=node npm run build:render
