@@ -236,7 +236,7 @@ export default function Home() {
     }
   }, [benchmark, calibrated, history, horizon, loadedRunId, maxSpread, mode, participation, printFilter, quantity, replayIndex, routePolicy, run, side, storageReady, window]);
   const copySummary = async () => {
-    const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
+    const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${routePolicy} route · ${activePrint[4]} venue · ${calibrated ? 'adaptive calibration' : 'route policy'} · ${result.microstructureDrag} bps market structure · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
     try {
       await globalThis.navigator.clipboard.writeText(summary);
       setCopyState('Copied');
