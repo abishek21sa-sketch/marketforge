@@ -17,7 +17,7 @@ function Metric({ label, value, note, tone = '' }: { label: string; value: strin
   return <div className="metric-card"><div className="eyebrow">{label}</div><div className={'metric-value ' + tone}>{value}</div><div className="metric-note">{note}</div></div>;
 }
 
-type LedgerItem = { id: number; strategy: string; side: string; benchmark: string; slippage: string; fill: string; quantity: number; route: string; venue?: string; calibrated?: boolean; microstructureDrag?: string; cost?: string; horizon?: number; participation?: number; maxSpread?: number; createdAt?: string };
+type LedgerItem = { id: number; strategy: string; side: string; benchmark: string; slippage: string; fill: string; quantity: number; route: string; venue?: string; calibrated?: boolean; posture?: string; microstructureDrag?: string; cost?: string; horizon?: number; participation?: number; maxSpread?: number; createdAt?: string };
 const SESSION_KEY = 'marketforge-execution-session-v1';
 export default function Home() {
   const [window, setWindow] = useState<'1m'|'5m'|'30m'>('5m');
@@ -139,7 +139,7 @@ export default function Home() {
     setCalibrationCycle((cycle) => cycle + 1);
     advanceReplay();
   };
-  const buildLedgerItem = useCallback((id: number): LedgerItem => ({ id, strategy: mode, side, benchmark, slippage: result.slippage, fill: result.fill, quantity, route: routePolicy, venue: activePrint[4], calibrated, microstructureDrag: result.microstructureDrag, cost: result.cost, horizon, participation, maxSpread, createdAt: new Date().toISOString() }), [activePrint, benchmark, calibrated, horizon, maxSpread, mode, participation, quantity, result.cost, result.fill, result.microstructureDrag, result.slippage, routePolicy, side]);
+  const buildLedgerItem = useCallback((id: number): LedgerItem => ({ id, strategy: mode, side, benchmark, slippage: result.slippage, fill: result.fill, quantity, route: routePolicy, venue: activePrint[4], calibrated, posture: result.posture, microstructureDrag: result.microstructureDrag, cost: result.cost, horizon, participation, maxSpread, createdAt: new Date().toISOString() }), [activePrint, benchmark, calibrated, horizon, maxSpread, mode, participation, quantity, result.cost, result.fill, result.microstructureDrag, result.posture, result.slippage, routePolicy, side]);
   const loadLedgerItem = (item: LedgerItem) => {
     if (item.strategy === 'TWAP' || item.strategy === 'VWAP' || item.strategy === 'POV') setMode(item.strategy);
     if (item.side === 'Buy' || item.side === 'Sell') setSide(item.side);
@@ -237,7 +237,7 @@ export default function Home() {
     }
   }, [benchmark, calibrated, history, horizon, loadedRunId, maxSpread, mode, participation, printFilter, quantity, replayIndex, routePolicy, run, side, storageReady, window]);
   const copySummary = async () => {
-    const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${routePolicy} route · ${activePrint[4]} venue · ${calibrated ? 'adaptive calibration' : 'route policy'} · ${result.microstructureDrag} bps market structure · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
+    const summary = `NVDA ${side} ${quantity.toLocaleString()} shares · ${mode} · ${benchmark} benchmark · ${routePolicy} route · ${activePrint[4]} venue · ${calibrated ? 'adaptive calibration' : 'route policy'} · ${result.posture} posture · ${result.microstructureDrag} bps market structure · ${horizon} minute horizon · ${result.slippage} bps slippage · ${result.fill}% fill · $${result.cost} estimated impact`;
     try {
       await globalThis.navigator.clipboard.writeText(summary);
       setCopyState('Copied');
@@ -249,8 +249,8 @@ export default function Home() {
   const exportLedger = () => {
     if (history.length === 0) return;
     const rows = [
-      ['Run', 'Recorded', 'Side', 'Strategy', 'Benchmark', 'Quantity', 'Horizon (min)', 'Participation (%)', 'Spread limit (¢)', 'Route', 'Venue', 'Calibration', 'Market structure (bps)', 'Slippage (bps)', 'Fill (%)', 'Est. impact ($)'],
-      ...history.map((item) => [item.id, item.createdAt ?? '', item.side, item.strategy, item.benchmark, item.quantity ?? '', item.horizon ?? '', item.participation ?? '', item.maxSpread ?? '', item.route ?? 'Balanced', item.venue ?? '', item.calibrated ? 'Adaptive' : 'Route policy', item.microstructureDrag ?? '', item.slippage, item.fill, item.cost ?? '']),
+      ['Run', 'Recorded', 'Side', 'Strategy', 'Benchmark', 'Quantity', 'Horizon (min)', 'Participation (%)', 'Spread limit (¢)', 'Route', 'Venue', 'Calibration', 'Posture', 'Market structure (bps)', 'Slippage (bps)', 'Fill (%)', 'Est. impact ($)'],
+      ...history.map((item) => [item.id, item.createdAt ?? '', item.side, item.strategy, item.benchmark, item.quantity ?? '', item.horizon ?? '', item.participation ?? '', item.maxSpread ?? '', item.route ?? 'Balanced', item.venue ?? '', item.calibrated ? 'Adaptive' : 'Route policy', item.posture ?? '', item.microstructureDrag ?? '', item.slippage, item.fill, item.cost ?? '']),
     ];
     const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
     const url = globalThis.URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
