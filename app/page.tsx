@@ -272,7 +272,7 @@ export default function Home() {
       loadedRunId,
       calibrated,
       calibrationCycle,
-      replay: { window, event: activePrint[0], index: replayIndex },
+      replay: { window, event: activePrint[0], venue: activePrint[4], index: replayIndex },
       order: { mode, side, benchmark, quantity, horizon, participation, routePolicy, maxSpread },
       result,
       history,
@@ -297,7 +297,7 @@ export default function Home() {
         loadedRunId?: unknown;
         calibrated?: unknown;
         calibrationCycle?: unknown;
-        replay?: { window?: unknown; index?: unknown };
+        replay?: { window?: unknown; event?: unknown; venue?: unknown; index?: unknown };
         order?: { mode?: unknown; side?: unknown; benchmark?: unknown; quantity?: unknown; horizon?: unknown; participation?: unknown; routePolicy?: unknown; maxSpread?: unknown };
         history?: unknown;
       };
@@ -312,7 +312,9 @@ export default function Home() {
       if (order.routePolicy === 'Balanced' || order.routePolicy === 'Queue-aware' || order.routePolicy === 'Latency-aware') setRoutePolicy(order.routePolicy);
       if (order.maxSpread === 2 || order.maxSpread === 3 || order.maxSpread === 5) setMaxSpread(order.maxSpread);
       if (saved.replay?.window === '1m' || saved.replay?.window === '5m' || saved.replay?.window === '30m') setWindow(saved.replay.window);
-      if (typeof saved.replay?.index === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replay.index)));
+      const importedReplayIndex = typeof saved.replay?.event === 'string' ? prints.findIndex(([time]) => time === saved.replay?.event) : -1;
+      if (importedReplayIndex >= 0) setReplayIndex(importedReplayIndex);
+      else if (typeof saved.replay?.index === 'number') setReplayIndex(Math.max(0, Math.min(prints.length - 1, saved.replay.index)));
       if (typeof saved.run === 'number') setRun(Math.max(1, saved.run));
       if (typeof saved.calibrated === 'boolean') setCalibrated(saved.calibrated);
       if (typeof saved.calibrationCycle === 'number') setCalibrationCycle(Math.max(0, saved.calibrationCycle));
