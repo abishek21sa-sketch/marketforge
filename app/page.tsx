@@ -172,7 +172,13 @@ export default function Home() {
     if (item.horizon === 5 || item.horizon === 15 || item.horizon === 30) setHorizon(item.horizon);
     if (item.participation === 5 || item.participation === 10 || item.participation === 20) setParticipation(item.participation);
     if (item.maxSpread === 2 || item.maxSpread === 3 || item.maxSpread === 5) setMaxSpread(item.maxSpread);
-    setLastRunNotice(`Loaded paper run #${String(item.id).padStart(2, '0')}`);
+    if (typeof item.calibrated === 'boolean') setCalibrated(item.calibrated);
+    const venueIndex = item.venue ? prints.map(([, , , , printVenue]) => printVenue).lastIndexOf(item.venue) : -1;
+    if (venueIndex >= 0) {
+      setIsAutoReplay(false);
+      setReplayIndex(venueIndex);
+    }
+    setLastRunNotice(`Loaded paper run #${String(item.id).padStart(2, '0')}${venueIndex >= 0 ? ' · replay context restored' : ''}`);
     setLoadedRunId(item.id);
     setActiveNav('execution-lab');
     document.getElementById('execution-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
