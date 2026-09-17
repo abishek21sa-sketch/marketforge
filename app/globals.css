@@ -46,4 +46,5 @@
 
 .session-import-button{cursor:pointer}.session-file-input{display:none}
 .slice-share{color:var(--faint);font:9px var(--font-mono)}
+.venue-quote{border:0;width:100%;text-align:left}
 @media(min-width:701px){.sim-result{grid-template-columns:repeat(5,1fr)}}
