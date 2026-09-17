@@ -47,4 +47,8 @@
 .session-import-button{cursor:pointer}.session-file-input{display:none}
 .slice-share{color:var(--faint);font:9px var(--font-mono)}
 .venue-quote{border:0;width:100%;text-align:left}
+.venue-quote,.slice{background:transparent;color:inherit;font:inherit;cursor:pointer}
+.venue-quote:focus-visible,.slice:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.slice{border:0;padding:0}
+.slice[aria-pressed="true"] .slice-dot{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,166,90,.14)}
 @media(min-width:701px){.sim-result{grid-template-columns:repeat(5,1fr)}}
