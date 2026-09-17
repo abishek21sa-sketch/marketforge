@@ -192,7 +192,7 @@ export default function Home() {
       setLastRunNotice('Enter at least 100 shares to simulate');
       return;
     }
-    const nextRun = run + 1;
+    const nextRun = history.length === 0 ? Math.max(1, run) : run + 1;
     setRun(nextRun);
     setHistory((items) => [buildLedgerItem(nextRun), ...items].slice(0, 3));
     setLoadedRunId(nextRun);
@@ -219,7 +219,7 @@ export default function Home() {
           setLastRunNotice('Enter at least 100 shares to simulate');
           return;
         }
-        const nextRun = run + 1;
+        const nextRun = history.length === 0 ? Math.max(1, run) : run + 1;
         setRun(nextRun);
         setHistory((items) => [buildLedgerItem(nextRun), ...items].slice(0, 3));
     setLoadedRunId(nextRun);
@@ -228,7 +228,7 @@ export default function Home() {
     };
     globalThis.addEventListener('keydown', handleShortcut);
     return () => globalThis.removeEventListener('keydown', handleShortcut);
-  }, [benchmark, buildLedgerItem, mode, quantity, result.fill, result.slippage, run, side]);
+  }, [benchmark, buildLedgerItem, history.length, mode, quantity, result.fill, result.slippage, run, side]);
   useEffect(() => {
     const restoreId = globalThis.setTimeout(() => {
       try {
