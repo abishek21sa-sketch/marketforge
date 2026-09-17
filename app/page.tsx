@@ -275,7 +275,15 @@ export default function Home() {
       setCopyState('Copied');
       globalThis.setTimeout(() => setCopyState('Copy summary'), 1800);
     } catch {
-      setCopyState('Copy unavailable');
+      try {
+        const manualCopy = globalThis.prompt('Clipboard blocked · copy this execution summary', summary);
+        if (manualCopy === null) throw new Error('Manual copy dismissed');
+        setCopyState('Review prompt');
+        globalThis.setTimeout(() => setCopyState('Copy summary'), 1800);
+      } catch {
+        setCopyState('Copy unavailable');
+        setLastRunNotice('Clipboard blocked · use Export CSV or JSON');
+      }
     }
   };
   const exportLedger = () => {
