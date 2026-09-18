@@ -3,7 +3,7 @@ services:
     name: marketforge-execution-lab
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build:render
+    buildCommand: npm ci && NITRO_PRESET=node npm run build:render
     startCommand: npm run start:render
     envVars:
       - key: NODE_VERSION
