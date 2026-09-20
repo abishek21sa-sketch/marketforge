@@ -14,7 +14,7 @@
     "start:render": "node .output/server/index.mjs",
     "lint": "oxlint",
     "lint:app": "oxlint app/page.tsx",
-    "test": "node --experimental-strip-types --test app/execution-model.test.ts",
+    "test": "node --experimental-strip-types --test app/execution-model.test.ts app/market-data.test.ts",
     "format": "oxfmt"
   },
   "dependencies": {

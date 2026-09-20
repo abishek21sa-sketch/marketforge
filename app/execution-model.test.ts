@@ -1,19 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isValidOrderQuantity, matchesExecutionConfiguration, type ExecutionContext } from './execution-model.ts';
+import {
+  isValidOrderQuantity,
+  matchesExecutionConfiguration,
+  type ExecutionContext,
+} from './execution-model.ts';
 
 test('paper order quantities must be whole 100-share lots from 100 upward', () => {
-  for (const quantity of [100, 200, 25_000, 100_000]) assert.equal(isValidOrderQuantity(quantity), true);
-  for (const quantity of [0, 99, 101, 250.5, -100, Number.NaN, Number.POSITIVE_INFINITY]) {
-    assert.equal(isValidOrderQuantity(quantity), false, `expected ${quantity} to be rejected`);
+  for (const quantity of [100, 200, 25_000, 100_000])
+    assert.equal(isValidOrderQuantity(quantity), true);
+  for (const quantity of [
+    0,
+    99,
+    101,
+    250.5,
+    -100,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ]) {
+    assert.equal(
+      isValidOrderQuantity(quantity),
+      false,
+      `expected ${quantity} to be rejected`,
+    );
   }
 });
 
 test('a paper run only matches when every result-affecting control matches', () => {
   const baseline: ExecutionContext = {
-    strategy: 'TWAP', side: 'Buy', benchmark: 'Arrival', quantity: 25_000,
-    route: 'Balanced', horizon: 15, participation: 10, maxSpread: 3,
-    venue: 'XNAS', calibrated: false,
+    strategy: 'TWAP',
+    side: 'Buy',
+    benchmark: 'Arrival',
+    quantity: 25_000,
+    route: 'Balanced',
+    horizon: 15,
+    participation: 10,
+    maxSpread: 3,
+    venue: 'XNAS',
+    calibrated: false,
+    marketContext: 'fixture|09:41:25|buy|182.44|340|ARCX',
   };
   assert.equal(matchesExecutionConfiguration(baseline, { ...baseline }), true);
 
@@ -28,6 +53,11 @@ test('a paper run only matches when every result-affecting control matches', () 
     { ...baseline, maxSpread: 5 },
     { ...baseline, venue: 'BATS' },
     { ...baseline, calibrated: true },
+    {
+      ...baseline,
+      marketContext: 'csv|execution.csv|09:41:25|buy|182.44|340|ARCX',
+    },
   ];
-  for (const current of changedContexts) assert.equal(matchesExecutionConfiguration(baseline, current), false);
+  for (const current of changedContexts)
+    assert.equal(matchesExecutionConfiguration(baseline, current), false);
 });
