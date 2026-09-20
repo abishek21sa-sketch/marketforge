@@ -12,9 +12,9 @@
     "build:render": "vite build --config vite.deploy.config.ts",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "start:render": "node .output/server/index.mjs",
-    "lint": "oxlint",
+    "lint": "oxlint app/page.tsx app/research-model.ts",
     "lint:app": "oxlint app/page.tsx",
-    "test": "node --experimental-strip-types --test app/execution-model.test.ts app/market-data.test.ts",
+    "test": "node --experimental-strip-types --test app/execution-model.test.ts app/market-data.test.ts app/research-model.test.ts",
     "format": "oxfmt"
   },
   "dependencies": {

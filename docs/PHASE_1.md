@@ -18,3 +18,11 @@ No live market data, exchange simulator, broker connection, order submission, au
 3. **Phase 4 — Production surfaces:** persisted research runs, portfolio-level reporting, permissions, and optional broker adapters behind explicit safety gates.
 
 All future routing remains paper/simulation-only until a separate product decision explicitly authorizes live trading work.
+
+## Current implementation boundary
+
+- The venue routing estimate now scores the illustrative venue snapshots by displayed spread, queue quality, latency, and displayed depth. It remains a deterministic fixture model, not an order-book replay or queue-position simulator.
+- The research workbench runs a deterministic 3-by-3 strategy/horizon sweep and exports its assumptions and results as CSV. Existing ledger data can be summarized as share-weighted paper-run exposure and modeled cost, converted using the $182.21 arrival-price fixture.
+- The ledger and imported tape remain in browser `localStorage` and are capped to the most recent 25 runs. JSON export/import is the portable backup path; there is no server-side database, account, cross-device synchronization, or team sharing.
+- Secure permissions are not implemented. A client-side role selector would not protect data or actions; shared workspaces require a selected identity provider, server-side authorization, and durable storage before they can be represented as access-controlled.
+- No broker, live market-data feed, live order submission, or live routing is included.

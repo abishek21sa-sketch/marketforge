@@ -32,5 +32,14 @@ Create a Web Service from the GitHub repository and use the checked-in `render.y
 4. Confirm Vercel and Render pick up the same commit.
 5. Smoke-check the deployed app: load the execution lab, run a paper simulation, and verify that export still works.
 
+## Data, access, and release boundaries
+
+- The GitHub Actions workflow has read-only repository permissions and cancels superseded runs on the same branch/ref.
+- A green build validates compilation and unit tests; it does not confirm that either hosting provider completed a deployment. Verify the deployment commit and smoke-test both public URLs after a push.
+- Saved runs and imported tapes are browser-local (`localStorage`), limited to 25 recent runs, and are not shared between browsers/devices. Use the session JSON export for a portable backup.
+- The portfolio report aggregates only those local paper runs and reports modeled, illustrative cost—not realized performance.
+- The public hosting targets currently have no user authentication or server-side authorization. Do not treat local browser state or a future client-side role control as permission enforcement. Before adding shared/persistent production workspaces, select an identity provider and database and enforce authorization on the server.
+- Broker access and live order submission remain explicitly out of scope.
+
 These targets are intentionally separate from the private Sites deployment. No provider credentials or external account changes are stored in the repository.
 

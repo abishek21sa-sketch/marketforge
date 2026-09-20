@@ -43,6 +43,13 @@ import {
   parseMarketPrintCsv,
   type MarketPrint,
 } from './market-data';
+import {
+  buildParameterSweep,
+  estimateScenario,
+  estimateRoutingDrag,
+  rankVenueAllocations,
+  summarizePortfolio,
+} from './research-model';
 
 const samplePrints: MarketPrint[] = [
   ['09:41:00', 'buy', '182.41', '420', 'XNAS'],
@@ -64,10 +71,10 @@ const book = [
   ['182.38', 760, 'bid'],
 ];
 const venueQuotes = [
-  ['XNAS', '182.41', '182.43', '0.9ms', '62%'],
-  ['BATS', '182.40', '182.42', '1.2ms', '48%'],
-  ['EDGX', '182.41', '182.44', '1.5ms', '31%'],
-  ['ARCX', '182.40', '182.43', '1.8ms', '22%'],
+  ['XNAS', '182.41', '182.43', '0.9ms', '62%', '2,480'],
+  ['BATS', '182.40', '182.42', '1.2ms', '48%', '1,920'],
+  ['EDGX', '182.41', '182.44', '1.5ms', '31%', '1,460'],
+  ['ARCX', '182.40', '182.43', '1.8ms', '22%', '1,180'],
 ];
 const chartPaths: Record<'1m' | '5m' | '30m', string> = {
   '1m': '0,104 46,101 92,108 138,91 184,94 230,82 276,88 322,71 368,76 414,61 460,66 506,51 552,56 598,39 644,44 690,29',
@@ -80,6 +87,7 @@ const chartTicks: Record<'1m' | '5m' | '30m', string[]> = {
   '5m': ['09:36:00', '09:37:30', '09:39:00', '09:40:30', '09:42:00'],
   '30m': ['09:12:00', '09:19:30', '09:27:00', '09:34:30', '09:42:00'],
 };
+const ARRIVAL_PRICE = 182.21;
 
 function Metric({
   label,
@@ -115,6 +123,8 @@ type LedgerItem = {
   posture?: string;
   microstructureDrag?: string;
   cost?: string;
+  costModel?: number;
+  referencePrice?: number;
   horizon?: number;
   participation?: number;
   maxSpread?: number;
@@ -148,9 +158,46 @@ function isLedgerItem(value: unknown): value is LedgerItem {
       item.datasetSource === 'fixture' ||
       item.datasetSource === 'csv') &&
     (item.datasetName === undefined || typeof item.datasetName === 'string') &&
+    (item.costModel === undefined ||
+      item.costModel === 1 ||
+      item.costModel === 2) &&
+    (item.referencePrice === undefined ||
+      (typeof item.referencePrice === 'number' &&
+        Number.isFinite(item.referencePrice) &&
+        item.referencePrice > 0)) &&
     (item.printEvent === undefined || typeof item.printEvent === 'string')
   );
 }
+
+function getLedgerItemCost(item: LedgerItem): number {
+  if (item.costModel === 2 && Number.isFinite(Number(item.cost)))
+    return Number(item.cost);
+  return (
+    (Number(item.slippage) *
+      item.quantity *
+      (item.referencePrice ?? ARRIVAL_PRICE)) /
+    10_000
+  );
+}
+
+function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const csv = rows
+    .map((row) =>
+      row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','),
+    )
+    .join('\n');
+  const url = globalThis.URL.createObjectURL(
+    new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  globalThis.setTimeout(() => globalThis.URL.revokeObjectURL(url), 0);
+}
+
 const SESSION_KEY = 'marketforge-execution-session-v1';
 const MAX_LEDGER_ITEMS = 25;
 export default function Home() {
@@ -236,53 +283,42 @@ export default function Home() {
     );
     return points[pointIndex] ?? [0, 0];
   }, [marketPrints.length, replayIndex, window]);
-  const queueContext = useMemo(() => {
-    const quote = venueQuotes.find(([venue]) => venue === activePrint[4]);
-    return {
-      queue: Number(quote?.[4]?.replace('%', '') ?? 48),
-      latency: Number(quote?.[3]?.replace('ms', '') ?? 1.2),
-    };
-  }, [activePrint]);
+  const venueCalibration = useMemo(
+    () =>
+      rankVenueAllocations(
+        venueQuotes.map(([venue, bid, ask, latency, queue, depth]) => ({
+          venue,
+          bid: Number(bid),
+          ask: Number(ask),
+          latencyMs: Number(latency.replace('ms', '')),
+          queueQuality: Number(queue.replace('%', '')),
+          displayedDepth: Number(depth.replaceAll(',', '')),
+        })),
+        routePolicy,
+        activePrint[4],
+      ),
+    [activePrint, routePolicy],
+  );
+  const routingDrag = useMemo(
+    () => estimateRoutingDrag(venueCalibration, routePolicy),
+    [routePolicy, venueCalibration],
+  );
   const quantityValid = isValidOrderQuantity(quantity);
   const result = useMemo(() => {
     const scale = Math.min(quantity / 25000, 3);
-    const benchmarkAdj =
-      benchmark === 'VWAP' ? -0.6 : benchmark === 'Close' ? 1.1 : 0;
     const sideAdj = side === 'Sell' ? 0.25 : 0;
     const modeFactor = mode === 'TWAP' ? 1.8 : mode === 'VWAP' ? 1.35 : 1.05;
     const participationAdj = mode === 'POV' ? (participation / 10) * 0.65 : 0;
-    const queueDrag = calibrated
-      ? (50 - queueContext.queue) * 0.018 +
-        Math.max(0, queueContext.latency - 1) * 0.12
-      : 0;
-    const routeEffect =
-      routePolicy === 'Queue-aware'
-        ? -0.25
-        : routePolicy === 'Latency-aware'
-          ? -0.18
-          : 0;
-    const microstructureDrag = queueDrag + routeEffect;
-    const venueMix =
-      routePolicy === 'Queue-aware'
-        ? [
-            ['XNAS', '49%', 'teal'],
-            ['BATS', '28%', 'blue'],
-            ['EDGX', '15%', 'orange'],
-            ['ARCX', '8%', 'faint'],
-          ]
-        : routePolicy === 'Latency-aware'
-          ? [
-              ['XNAS', '55%', 'teal'],
-              ['BATS', '26%', 'blue'],
-              ['EDGX', '13%', 'orange'],
-              ['ARCX', '6%', 'faint'],
-            ]
-          : [
-              ['XNAS', '42%', 'teal'],
-              ['BATS', '31%', 'blue'],
-              ['EDGX', '17%', 'orange'],
-              ['ARCX', '10%', 'faint'],
-            ];
+    const horizonDrag = horizon < 10 ? 1.9 : horizon < 20 ? 0.4 : 0.1;
+    const microstructureDrag = routingDrag;
+    const venueMix = venueCalibration.map(
+      (item, index) =>
+        [
+          item.venue,
+          item.weight + '%',
+          ['teal', 'blue', 'orange', 'faint'][index],
+        ] as [string, string, string],
+    );
     const quotedSpread = 2.0;
     const spreadCheck = quotedSpread <= maxSpread;
     const visibleDepth = book.reduce(
@@ -333,10 +369,22 @@ export default function Home() {
       4.7 +
       scale * modeFactor +
       participationAdj +
-      (horizon < 10 ? 1.9 : 0) +
+      horizonDrag +
       sideAdj +
       microstructureDrag;
-    const slippage = Math.max(0.8, baseSlippage + benchmarkAdj).toFixed(1);
+    const scenario = estimateScenario(
+      {
+        quantity,
+        referencePrice: ARRIVAL_PRICE,
+        side,
+        benchmark,
+        participation,
+        routingDrag,
+      },
+      mode,
+      horizon as 5 | 15 | 30,
+    );
+    const slippage = scenario.slippageBps.toFixed(1);
     const spread = mode === 'TWAP' ? 1.2 : mode === 'VWAP' ? 1.0 : 0.9;
     const sizeImpact =
       Math.max(0, scale - 1) *
@@ -352,35 +400,34 @@ export default function Home() {
           : 'Policy';
     const sweep = [5000, 25000, 50000, 100000].map((size) => ({
       size,
-      value: Math.max(
-        0.8,
-        4.7 +
-          (size / 25000) * modeFactor +
-          participationAdj +
-          (horizon < 10 ? 1.9 : 0) +
-          benchmarkAdj +
-          sideAdj +
-          microstructureDrag,
-      ).toFixed(1),
+      value: estimateScenario(
+        {
+          quantity: size,
+          referencePrice: ARRIVAL_PRICE,
+          side,
+          benchmark,
+          participation,
+          routingDrag,
+        },
+        mode,
+        horizon as 5 | 15 | 30,
+      ).slippageBps.toFixed(1),
     }));
-    const comparison = ['TWAP', 'VWAP', 'POV'].map((strategy) => {
-      const factor =
-        strategy === 'TWAP' ? 1.8 : strategy === 'VWAP' ? 1.35 : 1.05;
-      const povAdj = strategy === 'POV' ? participationAdj : 0;
-      return {
+    const comparison = (['TWAP', 'VWAP', 'POV'] as const).map((strategy) => ({
+      strategy,
+      value: estimateScenario(
+        {
+          quantity,
+          referencePrice: ARRIVAL_PRICE,
+          side,
+          benchmark,
+          participation,
+          routingDrag,
+        },
         strategy,
-        value: Math.max(
-          0.8,
-          4.7 +
-            scale * factor +
-            povAdj +
-            (horizon < 10 ? 1.9 : 0) +
-            benchmarkAdj +
-            sideAdj +
-            microstructureDrag,
-        ).toFixed(1),
-      };
-    });
+        horizon as 5 | 15 | 30,
+      ).slippageBps.toFixed(1),
+    }));
     const benchmarkMarks = [
       { label: 'Arrival', value: baseSlippage },
       { label: 'Session VWAP', value: baseSlippage - 0.6 },
@@ -388,8 +435,8 @@ export default function Home() {
     ].map((item) => ({ ...item, value: Math.max(0.8, item.value).toFixed(1) }));
     return {
       slippage,
-      fill: Math.min(99.2, 96.4 + horizon / 12 - scale * 0.35).toFixed(1),
-      cost: (Number(slippage) * quantity * 0.01).toFixed(0),
+      fill: scenario.fillPct.toFixed(1),
+      cost: scenario.estimatedCost.toFixed(2),
       microstructureDrag: microstructureDrag.toFixed(1),
       posture,
       sweep,
@@ -412,30 +459,29 @@ export default function Home() {
     participation,
     quantity,
     quantityValid,
-    queueContext,
+    routingDrag,
     routePolicy,
+    venueCalibration,
     side,
   ]);
 
-  const venueCalibration = useMemo(() => {
-    const scored = venueQuotes.map(([venue, , , latency, queue]) => {
-      const queueScore = Number(queue.replace('%', ''));
-      const latencyMs = Number(latency.replace('ms', ''));
-      const eventBias = activePrint[4] === venue ? 1.12 : 1;
-      const cycleBias = 1 + (calibrationCycle % 3) * 0.02;
-      return {
-        venue,
-        queue: queueScore,
-        latency: latencyMs,
-        score: (queueScore / latencyMs) * eventBias * cycleBias,
-      };
-    });
-    const totalScore = scored.reduce((total, item) => total + item.score, 0);
-    return scored.map((item) => ({
-      ...item,
-      weight: Math.round((item.score / totalScore) * 100),
-    }));
-  }, [activePrint, calibrationCycle]);
+  const parameterSweep = useMemo(
+    () =>
+      buildParameterSweep({
+        quantity,
+        referencePrice: ARRIVAL_PRICE,
+        side,
+        benchmark,
+        participation,
+        routingDrag,
+      }),
+    [benchmark, participation, quantity, routingDrag, side],
+  );
+  const portfolioSummary = useMemo(
+    () => summarizePortfolio(history),
+    [history],
+  );
+
   const activeVenueMix = calibrated
     ? venueCalibration.map(
         (item, index) =>
@@ -449,31 +495,27 @@ export default function Home() {
   const activeVenueProfile = venueCalibration.find(
     (item) => item.venue === activePrint[4],
   );
-  const scheduleSlices = useMemo(() => {
-    const sliceCount = 6;
-    const startMinutes = 9 * 60 + 36;
-    const weights =
-      mode === 'VWAP'
-        ? [0.12, 0.16, 0.2, 0.22, 0.18, 0.12]
-        : Array.from({ length: sliceCount }, () => 1 / sliceCount);
-    const baseQuantities = weights.map((weight) =>
-      Math.floor(quantity * weight),
-    );
-    const remainder =
-      quantity - baseQuantities.reduce((total, value) => total + value, 0);
-    return Array.from({ length: sliceCount }, (_, index) => {
-      const offset = Math.round((horizon / (sliceCount - 1)) * index);
-      const totalMinutes = startMinutes + offset;
-      const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
-      const minutes = String(totalMinutes % 60).padStart(2, '0');
-      return {
-        time: hours + ':' + minutes,
-        quantity: baseQuantities[index] + (index < remainder ? 1 : 0),
-        weight: weights[index],
-        simulated: configurationMatchesReference && index < 3,
-      };
-    });
-  }, [configurationMatchesReference, horizon, mode, quantity]);
+  const sliceCount = 6;
+  const startMinutes = 9 * 60 + 36;
+  const weights =
+    mode === 'VWAP'
+      ? [0.12, 0.16, 0.2, 0.22, 0.18, 0.12]
+      : Array.from({ length: sliceCount }, () => 1 / sliceCount);
+  const baseQuantities = weights.map((weight) => Math.floor(quantity * weight));
+  const remainder =
+    quantity - baseQuantities.reduce((total, value) => total + value, 0);
+  const scheduleSlices = Array.from({ length: sliceCount }, (_, index) => {
+    const offset = Math.round((horizon / (sliceCount - 1)) * index);
+    const totalMinutes = startMinutes + offset;
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+    const minutes = String(totalMinutes % 60).padStart(2, '0');
+    return {
+      time: hours + ':' + minutes,
+      quantity: baseQuantities[index] + (index < remainder ? 1 : 0),
+      weight: weights[index],
+      simulated: configurationMatchesReference && index < 3,
+    };
+  });
   const selectPrint = (index: number) => {
     setIsAutoReplay(false);
     setReplayIndex(index);
@@ -536,6 +578,8 @@ export default function Home() {
       posture: result.posture,
       microstructureDrag: result.microstructureDrag,
       cost: result.cost,
+      costModel: 2,
+      referencePrice: ARRIVAL_PRICE,
       horizon,
       participation,
       maxSpread,
@@ -618,13 +662,7 @@ export default function Home() {
     ? (Number(result.slippage) - Number(loadedRun.slippage)).toFixed(1)
     : '0.0';
   const baselineCostDelta = loadedRun
-    ? (
-        Number(result.cost) -
-        Number(
-          loadedRun.cost ??
-            Number(loadedRun.slippage) * loadedRun.quantity * 0.01,
-        )
-      ).toFixed(0)
+    ? (Number(result.cost) - getLedgerItemCost(loadedRun)).toFixed(0)
     : '0';
   const baselineStructureDelta = loadedRun
     ? (
@@ -903,6 +941,68 @@ export default function Home() {
         setLastRunNotice('Clipboard blocked · use Export CSV or JSON');
       }
     }
+  };
+  const exportParameterSweep = () => {
+    downloadCsv('marketforge-parameter-sweep.csv', [
+      [
+        'Strategy',
+        'Horizon (min)',
+        'Side',
+        'Benchmark',
+        'Quantity',
+        'Reference price ($)',
+        'Participation (%)',
+        'Estimated slippage (bps)',
+        'Estimated fill (%)',
+        'Estimated cost ($)',
+        'Routing drag (bps)',
+        'Data basis',
+      ],
+      ...parameterSweep.map((item) => [
+        item.strategy,
+        item.horizon,
+        item.side,
+        item.benchmark,
+        item.quantity,
+        item.referencePrice ?? ARRIVAL_PRICE,
+        item.participation,
+        item.slippageBps.toFixed(2),
+        item.fillPct.toFixed(2),
+        item.estimatedCost.toFixed(2),
+        item.routingDrag.toFixed(3),
+        'Illustrative fixture model',
+      ]),
+    ]);
+    setLastRunNotice('Parameter sweep exported · fixture estimates only');
+  };
+  const exportPortfolioReport = () => {
+    if (portfolioSummary.runCount === 0) return;
+    downloadCsv('marketforge-paper-portfolio-report.csv', [
+      ['Paper portfolio summary', 'Value'],
+      ['Run count', portfolioSummary.runCount],
+      ['Total shares', portfolioSummary.totalShares],
+      ['Reference-price basis ($)', ARRIVAL_PRICE],
+      ['Estimated impact ($)', portfolioSummary.estimatedCost.toFixed(2)],
+      [
+        'Share-weighted slippage (bps)',
+        portfolioSummary.weightedSlippageBps.toFixed(3),
+      ],
+      ['Share-weighted fill (%)', portfolioSummary.weightedFillPct.toFixed(3)],
+      [],
+      ['Strategy', 'Runs', 'Shares', 'Estimated impact ($)'],
+      ...portfolioSummary.strategies.map((item) => [
+        item.strategy,
+        item.runs,
+        item.shares,
+        item.cost.toFixed(2),
+      ]),
+      [],
+      [
+        'Scope',
+        'Browser-local saved paper runs; illustrative fixture estimates',
+      ],
+    ]);
+    setLastRunNotice('Portfolio report exported · local paper ledger');
   };
   const exportLedger = () => {
     if (history.length === 0) return;
@@ -1669,9 +1769,9 @@ export default function Home() {
               <div className="venue-depth">
                 <div className="venue-depth-head">
                   <span>Venue snapshots</span>
-                  <span>queue / latency</span>
+                  <span>queue · latency · depth</span>
                 </div>
-                {venueQuotes.map(([venue, bid, ask, latency, queue]) => (
+                {venueQuotes.map(([venue, bid, ask, latency, queue, depth]) => (
                   <button
                     type="button"
                     className={
@@ -1691,6 +1791,7 @@ export default function Home() {
                     <span className="venue-ask">{ask}</span>
                     <span className="venue-queue">{queue}</span>
                     <span className="venue-latency">{latency}</span>
+                    <span className="venue-depth-count">{depth}</span>
                   </button>
                 ))}
                 {activeVenueProfile && (
@@ -1698,12 +1799,13 @@ export default function Home() {
                     <div>
                       <span>Active venue</span>
                       <strong>
-                        {activeVenueProfile.venue} · {activeVenueProfile.queue}%
-                        queue
+                        {activeVenueProfile.venue} ·{' '}
+                        {activeVenueProfile.queueQuality}% queue
                       </strong>
                     </div>
                     <span>
-                      {activeVenueProfile.latency.toFixed(1)}ms observed latency
+                      {activeVenueProfile.latencyMs.toFixed(1)}ms latency ·{' '}
+                      {activeVenueProfile.displayedDepth.toLocaleString()} shown
                     </span>
                   </div>
                 )}
@@ -2454,6 +2556,84 @@ export default function Home() {
               larger clips spend more of the visible book.
             </div>
           </section>
+          <section className="panel sweep-panel">
+            <div className="panel-header compact">
+              <div>
+                <div className="section-label">
+                  <SlidersHorizontal size={14} /> Research workbench
+                </div>
+                <h2>Strategy × horizon parameter sweep</h2>
+              </div>
+              <button className="text-button" onClick={exportParameterSweep}>
+                <Download size={13} /> Export sweep CSV
+              </button>
+            </div>
+            <p className="sweep-intro">
+              Nine deterministic cases hold side, benchmark, size, route
+              snapshot, and participation constant while varying strategy and
+              horizon. Estimates use the illustrative fixture model.
+            </p>
+            <div className="sweep-table-wrap">
+              <table className="sweep-table">
+                <thead>
+                  <tr>
+                    <th>Strategy</th>
+                    <th>Horizon</th>
+                    <th>Slippage</th>
+                    <th>Fill</th>
+                    <th>Est. cost</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parameterSweep.map((item) => {
+                    const activeCase =
+                      item.strategy === mode && item.horizon === horizon;
+                    return (
+                      <tr
+                        key={item.strategy + '-' + item.horizon}
+                        className={activeCase ? 'active-sweep-row' : ''}
+                      >
+                        <td>{item.strategy}</td>
+                        <td>{item.horizon} min</td>
+                        <td>{item.slippageBps.toFixed(1)} bps</td>
+                        <td>{item.fillPct.toFixed(1)}%</td>
+                        <td>${item.estimatedCost.toFixed(0)}</td>
+                        <td>
+                          <button
+                            className="text-button sweep-load"
+                            onClick={() => {
+                              setMode(item.strategy);
+                              setHorizon(item.horizon);
+                              setLastRunNotice(
+                                item.strategy +
+                                  ' · ' +
+                                  item.horizon +
+                                  ' minute research case loaded · review before simulating',
+                              );
+                            }}
+                            aria-label={
+                              'Load ' +
+                              item.strategy +
+                              ' ' +
+                              item.horizon +
+                              ' minute case'
+                            }
+                          >
+                            Load
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="sweep-footnote">
+              Hypothetical paper estimates only; not a forecast, market-data
+              replay fill, or execution guarantee.
+            </div>
+          </section>
           <section id="setup" className="panel calibration-panel">
             <div className="panel-header compact">
               <div>
@@ -2496,12 +2676,15 @@ export default function Home() {
                     />
                   </div>
                   <div className="calibration-stats">
-                    <span>Queue {item.queue}%</span>
-                    <span>{item.latency.toFixed(1)}ms</span>
+                    <span>Queue quality {item.queueQuality}%</span>
+                    <span>
+                      {item.latencyMs.toFixed(1)}ms ·{' '}
+                      {item.displayedDepth.toLocaleString()} depth
+                    </span>
                   </div>
                   <p>
                     {calibrated
-                      ? 'Adaptive weight from queue / latency'
+                      ? 'Adaptive score from queue, latency, spread, and depth'
                       : 'Ready for calibration'}
                   </p>
                 </div>
@@ -2511,8 +2694,8 @@ export default function Home() {
               <Sparkles size={14} />
               <span>
                 {calibrated
-                  ? 'Weights favor displayed queue quality while penalizing latency.'
-                  : 'Recalibration uses the latest visible queue and latency snapshot.'}{' '}
+                  ? 'Weights combine displayed queue quality, latency, spread, and depth.'
+                  : 'Calibration uses the illustrative venue quote and depth snapshots.'}{' '}
                 {calibrated && (
                   <>
                     Snapshot {replayIndex + 1}/6 · {activePrint[0]}.000 ET
@@ -2696,6 +2879,87 @@ export default function Home() {
               </div>
             )}
           </section>
+          <section className="panel portfolio-panel">
+            <div className="panel-header compact">
+              <div>
+                <div className="section-label">
+                  <Layers3 size={14} /> Paper portfolio report
+                </div>
+                <h2>Saved-run exposure &amp; modeled cost</h2>
+              </div>
+              <div className="ledger-actions">
+                <span className="report-badge">
+                  LATEST {MAX_LEDGER_ITEMS} LOCAL RUNS
+                </span>
+                {history.length > 0 && (
+                  <button
+                    className="text-button"
+                    onClick={exportPortfolioReport}
+                  >
+                    <Download size={13} /> Export report CSV
+                  </button>
+                )}
+              </div>
+            </div>
+            {portfolioSummary.runCount === 0 ? (
+              <div className="ledger-empty">
+                <span>⌁</span>
+                <div>
+                  <strong>Portfolio report is ready</strong>
+                  <p>
+                    Pin paper runs to compare total modeled exposure and cost.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="portfolio-metrics">
+                  <Metric
+                    label="Paper runs"
+                    value={portfolioSummary.runCount.toString()}
+                    note="saved in this browser"
+                  />
+                  <Metric
+                    label="Shares studied"
+                    value={portfolioSummary.totalShares.toLocaleString()}
+                    note="across saved runs"
+                  />
+                  <Metric
+                    label="Weighted slippage"
+                    value={
+                      portfolioSummary.weightedSlippageBps.toFixed(2) + ' bps'
+                    }
+                    note="share-weighted estimate"
+                    tone="warn"
+                  />
+                  <Metric
+                    label="Modeled impact"
+                    value={'$' + portfolioSummary.estimatedCost.toFixed(0)}
+                    note={
+                      portfolioSummary.weightedFillPct.toFixed(1) +
+                      '% weighted fill'
+                    }
+                  />
+                </div>
+                <div className="portfolio-strategies">
+                  {portfolioSummary.strategies.map((item) => (
+                    <div className="portfolio-strategy" key={item.strategy}>
+                      <strong>{item.strategy}</strong>
+                      <span>{item.runs} runs</span>
+                      <span>{item.shares.toLocaleString()} shares</span>
+                      <b>${item.cost.toFixed(0)} modeled</b>
+                    </div>
+                  ))}
+                </div>
+                <p className="sweep-footnote">
+                  Browser-local aggregate of saved NVDA paper studies; costs are
+                  illustrative estimates using the $182.21 arrival-price
+                  fixture, not realized trading costs. There is no cross-device
+                  sync or user access control in this build.
+                </p>
+              </>
+            )}
+          </section>
           <footer className="roadmap-footer">
             <div>
               <ShieldCheck size={14} />
@@ -2703,8 +2967,9 @@ export default function Home() {
               <span>· No broker connection or live routing</span>
             </div>
             <div>
-              Phase 2 foundation <span className="footer-dot" /> Next:
-              deployment verification, live-data adapter
+              Research &amp; deployment hardening{' '}
+              <span className="footer-dot" />
+              Fixture-based · no server sync
             </div>
           </footer>
         </div>

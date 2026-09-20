@@ -1,5 +1,12 @@
 name: MarketForge CI
 
+permissions:
+  contents: read
+
+concurrency:
+  group: marketforge-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -18,8 +25,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lint app surface
-        run: npm run lint:app
+      - name: Lint application source
+        run: npm run lint
       - name: Test execution rules
         run: npm test
       - name: Check patch hygiene
