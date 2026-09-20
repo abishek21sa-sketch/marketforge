@@ -52,4 +52,5 @@
 .slice{border:0;padding:0}
 .slice[aria-pressed="true"] .slice-dot{border-color:var(--orange);box-shadow:0 0 0 3px rgba(242,166,90,.14)}
 @media(min-width:701px){.sim-result{grid-template-columns:repeat(5,1fr)}}
+.slice.simulated .slice-dot{border-color:var(--teal);color:var(--bg);background:var(--teal)}.schedule-preview{color:var(--muted);font:600 10px var(--font-mono)}
 .order-status{display:flex;align-items:center;gap:9px}.paper-only-tag{color:var(--orange);border:1px solid rgba(242,166,90,.38);background:rgba(242,166,90,.07);border-radius:4px;padding:4px 6px;font:600 9px var(--font-mono);letter-spacing:.08em;white-space:nowrap}

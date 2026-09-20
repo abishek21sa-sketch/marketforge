@@ -20,6 +20,8 @@ jobs:
         run: npm ci
       - name: Lint app surface
         run: npm run lint:app
+      - name: Test execution rules
+        run: npm test
       - name: Check patch hygiene
         run: git diff --check
       - name: Build Sites target
